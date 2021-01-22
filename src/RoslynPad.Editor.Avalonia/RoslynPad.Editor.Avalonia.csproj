@@ -5,16 +5,18 @@
     <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
     <Version>$(EditorPackageVersion)</Version>
     <Description>Provides a Roslyn-based code editor using AvaloniaEdit (Avalonia platform) with completion, diagnostics, and quick actions</Description>
+    <NoWarn>NU5104</NoWarn>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="**\*.xaml" Subtype="Designer" Exclude="obj\**" />
-    <Compile Include="..\RoslynPad.Common\Utilities\ReflectionUtil.cs" Link="ReflectionUtil.cs" />
+    <Compile Include="..\RoslynPad.Runtime\Utilities\ReflectionUtil.cs" Link="ReflectionUtil.cs" />
     <Compile Update="**\*.xaml.cs" SubType="Code" DependentUpon="%(Filename)" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="0.7.0" />
-    <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.7.0" />
-    <PackageReference Include="System.Reactive.Linq" Version="4.1.2" />
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.9.0-preview1" />
+    <PackageReference Include="System.Reactive.Linq" Version="4.3.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RoslynPad.Roslyn.Avalonia\RoslynPad.Roslyn.Avalonia.csproj" />

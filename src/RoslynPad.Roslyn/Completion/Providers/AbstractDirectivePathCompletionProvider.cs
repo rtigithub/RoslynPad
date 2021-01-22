@@ -32,7 +32,7 @@ namespace RoslynPad.Roslyn.Completion.Providers
 
                 var tree = await document.GetSyntaxTreeAsync(cancellationToken).ConfigureAwait(false);
 
-                if (!TryGetStringLiteralToken(tree, position, out var stringLiteral, cancellationToken))
+                if (!TryGetStringLiteralToken(tree!, position, out var stringLiteral, cancellationToken))
                 {
                     return;
                 }
@@ -147,16 +147,16 @@ namespace RoslynPad.Roslyn.Completion.Providers
                 completionRules);
         }
 
-        private static string GetBaseDirectory(Document document, IScriptEnvironmentService environmentOpt)
+        private static string GetBaseDirectory(Document document, IScriptEnvironmentService? environmentOpt)
         {
             var result = PathUtilities.GetDirectoryName(document.FilePath);
             if (!PathUtilities.IsAbsolute(result))
             {
-                result = environmentOpt?.BaseDirectory;
+                result = environmentOpt?.BaseDirectory!;
                 Debug.Assert(result == null || PathUtilities.IsAbsolute(result));
             }
 
-            return result;
+            return result!;
         }
     }
 }

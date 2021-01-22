@@ -14,7 +14,7 @@ namespace RoslynPad.Roslyn
         private static readonly ImmutableArray<PortableExecutableReference> _unresolved = ImmutableArray.Create(MetadataReference.CreateFromFile(typeof(CachedScriptMetadataResolver).Assembly.Location));
 
         private readonly ScriptMetadataResolver _inner;
-        private readonly ConcurrentDictionary<string, ImmutableArray<PortableExecutableReference>> _cache;
+        private readonly ConcurrentDictionary<string, ImmutableArray<PortableExecutableReference>>? _cache;
         
         public CachedScriptMetadataResolver(string workingDirectory, bool useCache = false)
         {
@@ -25,13 +25,13 @@ namespace RoslynPad.Roslyn
             }
         }
 
-        public override bool Equals(object other) => _inner.Equals(other);
+        public override bool Equals(object? other) => _inner.Equals(other);
 
         public override int GetHashCode() => _inner.GetHashCode();
 
         public override bool ResolveMissingAssemblies => _inner.ResolveMissingAssemblies;
 
-        public override PortableExecutableReference ResolveMissingAssembly(MetadataReference definition, AssemblyIdentity referenceIdentity)
+        public override PortableExecutableReference? ResolveMissingAssembly(MetadataReference definition, AssemblyIdentity referenceIdentity)
         {
             if (_cache == null)
             {
@@ -39,13 +39,14 @@ namespace RoslynPad.Roslyn
             }
 
             return _cache.GetOrAdd(referenceIdentity.ToString(),
-                _ => ImmutableArray.Create(_inner.ResolveMissingAssembly(definition, referenceIdentity))).FirstOrDefault();
+                _ => ImmutableArray.Create(_inner.ResolveMissingAssembly(definition, referenceIdentity)!)).FirstOrDefault();
         }
 
-        public override ImmutableArray<PortableExecutableReference> ResolveReference(string reference, string baseFilePath, MetadataReferenceProperties properties)
+        public override ImmutableArray<PortableExecutableReference> ResolveReference(string reference, string? baseFilePath, MetadataReferenceProperties properties)
         {
             // nuget references will be resolved externally
             if (reference.StartsWith("nuget:", StringComparison.InvariantCultureIgnoreCase) ||
+                reference.StartsWith("framework:", StringComparison.InvariantCultureIgnoreCase) ||
                 reference.StartsWith("$NuGet", StringComparison.InvariantCultureIgnoreCase))
             {
                 return _unresolved;

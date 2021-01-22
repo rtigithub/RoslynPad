@@ -64,7 +64,7 @@ namespace RoslynPad.Roslyn.LanguageServices.PickMembers
         {
             get
             {
-                if (!CanMoveUp)
+                if (!CanMoveUp || SelectedIndex == null)
                 {
                     return string.Empty;
                 }
@@ -77,7 +77,7 @@ namespace RoslynPad.Roslyn.LanguageServices.PickMembers
         {
             get
             {
-                if (!CanMoveDown)
+                if (!CanMoveDown || SelectedIndex == null)
                 {
                     return string.Empty;
                 }
@@ -119,6 +119,7 @@ namespace RoslynPad.Roslyn.LanguageServices.PickMembers
         internal void MoveUp()
         {
             Debug.Assert(CanMoveUp);
+            if (SelectedIndex == null) return;
 
             var index = SelectedIndex.Value;
             Move(MemberContainers, index, delta: -1);
@@ -127,6 +128,7 @@ namespace RoslynPad.Roslyn.LanguageServices.PickMembers
         internal void MoveDown()
         {
             Debug.Assert(CanMoveDown);
+            if (SelectedIndex == null) return;
 
             var index = SelectedIndex.Value;
             Move(MemberContainers, index, delta: 1);
@@ -145,7 +147,7 @@ namespace RoslynPad.Roslyn.LanguageServices.PickMembers
         {
             public ISymbol MemberSymbol { get; }
 
-            private static SymbolDisplayFormat s_memberDisplayFormat = new SymbolDisplayFormat(
+            private static readonly SymbolDisplayFormat s_memberDisplayFormat = new SymbolDisplayFormat(
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
                 memberOptions: SymbolDisplayMemberOptions.IncludeParameters,
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType | SymbolDisplayParameterOptions.IncludeParamsRefOut | SymbolDisplayParameterOptions.IncludeOptionalBrackets,

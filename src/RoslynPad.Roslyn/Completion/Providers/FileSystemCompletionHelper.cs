@@ -43,7 +43,7 @@ namespace RoslynPad.Roslyn
             Debug.Assert(baseDirectoryOpt == null || PathUtilities.IsAbsolute(baseDirectoryOpt));
 
             _searchPaths = searchPaths;
-            _baseDirectoryOpt = baseDirectoryOpt;
+            _baseDirectoryOpt = baseDirectoryOpt!;
             _allowableExtensions = allowableExtensions;
             _folderGlyph = folderGlyph;
             _fileGlyph = fileGlyph;
@@ -52,7 +52,7 @@ namespace RoslynPad.Roslyn
 
         // virtual for testing
         protected virtual string[] GetLogicalDrives()
-            => IOUtilities.PerformIO(CorLightup.Desktop.GetLogicalDrives, Array.Empty<string>());
+            => IOUtilities.PerformIO(Directory.GetLogicalDrives, Array.Empty<string>());
 
         // virtual for testing
         protected virtual bool DirectoryExists(string fullPath)
@@ -85,6 +85,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateNetworkRoot()
             => CommonCompletionItem.Create(
                 "\\\\",
+                "",
                 glyph: null,
                 description: "\\\\".ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -92,6 +93,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateUnixRoot()
             => CommonCompletionItem.Create(
                 "/",
+                "",
                 glyph: _folderGlyph,
                 description: "/".ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -99,6 +101,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateFileSystemEntryItem(string fullPath, bool isDirectory)
             => CommonCompletionItem.Create(
                 PathUtilities.GetFileName(fullPath),
+                "",
                 glyph: isDirectory ? _folderGlyph : _fileGlyph,
                 description: fullPath.ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -106,6 +109,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateLogicalDriveItem(string drive)
             => CommonCompletionItem.Create(
                 drive,
+                "",
                 glyph: _folderGlyph,
                 description: drive.ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -181,13 +185,13 @@ namespace RoslynPad.Roslyn
                     // base directory:
                     if (_baseDirectoryOpt != null)
                     {
-                        result.AddRange(GetItemsInDirectory(PathUtilities.CombineAbsoluteAndRelativePaths(_baseDirectoryOpt, directoryPath), cancellationToken));
+                        result.AddRange(GetItemsInDirectory(PathUtilities.CombineAbsoluteAndRelativePaths(_baseDirectoryOpt, directoryPath)!, cancellationToken));
                     }
 
                     // search paths:
                     foreach (var searchPath in _searchPaths)
                     {
-                        result.AddRange(GetItemsInDirectory(PathUtilities.CombineAbsoluteAndRelativePaths(searchPath, directoryPath), cancellationToken));
+                        result.AddRange(GetItemsInDirectory(PathUtilities.CombineAbsoluteAndRelativePaths(searchPath, directoryPath)!, cancellationToken));
                     }
 
                     break;

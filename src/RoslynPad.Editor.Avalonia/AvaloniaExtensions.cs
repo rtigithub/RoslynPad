@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 namespace RoslynPad.Editor
 {
-    public static class AvaloniaExtensions
+    internal static class AvaloniaExtensions
     {
         public static T FindAncestorByType<T>(this IControl control)
             where T : IControl
@@ -19,10 +19,10 @@ namespace RoslynPad.Editor
                 control = control.Parent;
             }
 
-            return (T)control;
+            return (T)control!;
         }
 
-        public static Window GetWindow(this Control c) => c.FindAncestorByType<Window>();
+        public static Window? GetWindow(this Control c) => c.FindAncestorByType<Window>();
 
         public static Dispatcher GetDispatcher(this IControl o) => Dispatcher.UIThread;
 
@@ -39,12 +39,12 @@ namespace RoslynPad.Editor
             element.DetachedFromVisualTree += (o, e) => action(false);
         }
 
-        public static void AttachLocationChanged(this Window topLevel, EventHandler<PointEventArgs> handler)
+        public static void AttachLocationChanged(this Window topLevel, EventHandler<PixelPointEventArgs> handler)
         {
             topLevel.PositionChanged += handler;
         }
 
-        public static void DetachLocationChanged(this Window topLevel, EventHandler<PointEventArgs> handler)
+        public static void DetachLocationChanged(this Window topLevel, EventHandler<PixelPointEventArgs> handler)
         {
             topLevel.PositionChanged -= handler;
         }
@@ -79,8 +79,8 @@ namespace RoslynPad.Editor
 
         public static void Close(this PopupRoot window) => window.Hide();
 
-        public static bool HasModifiers(this KeyEventArgs args, InputModifiers modifier) =>
-            (args.Modifiers & modifier) == modifier;
+        public static bool HasModifiers(this KeyEventArgs args, KeyModifiers modifier) =>
+            (args.KeyModifiers & modifier) == modifier;
 
         public static void Open(this ToolTip toolTip, Control control) => ToolTip.SetIsOpen(control, true);
 

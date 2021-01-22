@@ -97,37 +97,62 @@
                         </MenuItem>
                     </MenuItem>
                 </Menu>
+                <Grid Visibility="{Binding HasReportedProgress, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      Width="60"
+                      Margin="5, 0" >
+                    <ProgressBar Value="{Binding ReportedProgress, Mode=OneWay}" 
+                                 Minimum="0.0"
+                                 Maximum="1.0" />
+                    <TextBlock Text="{Binding ReportedProgress, Mode=OneWay, Converter={StaticResource DoubleToPercentageTextConverter}}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Grid>
                 <Button Command="{Binding RestartHostCommand, Mode=OneTime}"
                         ToolTip="Restart host process (Shift+F5)"
                         Content="{StaticResource Restart}" />
                 <ComboBox ItemsSource="{Binding AvailablePlatforms, Mode=OneTime}"
                           SelectedItem="{Binding Platform}" />
-                <Button Content="{StaticResource BuildSolution}"
-                        Command="{Binding CompileAndSaveCommand, Mode=OneTime}"
-                        ToolTip="Compile and save assembly" />
                 <Separator />
                 <Button Command="{Binding SaveCommand, Mode=OneTime}"
                         ToolTip="Save (Ctrl+S)"
                         Content="{StaticResource Save}" />
+                <Button Command="{Binding OpenBuildPathCommand, Mode=OneTime}"
+                        ToolTip="Open Build Folder"
+                        Content="{StaticResource PackageFolder}" />
                 <Separator />
                 <Menu Background="Transparent"
                       Name="RootMenu">
                     <MenuItem Name="RootNuGetMenu"
                               IsSubmenuOpen="{Binding NuGet.IsPackagesMenuOpen}"
                               ItemsSource="{Binding NuGet.Packages}"
-                              Header="{Binding NuGet, Mode=OneTime}"
+                              Header="{Binding Mode=OneTime}"
                               ToolTip="NuGet Packages"
                               IsTextSearchEnabled="True">
                         <MenuItem.HeaderTemplate>
-                            <DataTemplate DataType="{x:Type ui:NuGetDocumentViewModel}">
+                            <DataTemplate DataType="{x:Type ui:OpenDocumentViewModel}">
                                 <Grid>
                                     <Image Source="{StaticResource NuGet}" />
-                                    <ProgressBar VerticalAlignment="Bottom"
+                                    <ProgressBar Name="Spinner"
+                                                 VerticalAlignment="Bottom"
                                                  Height="4"
                                                  BorderThickness="0"
-                                                 IsIndeterminate="{Binding IsSearching}"
-                                                 Visibility="{Binding IsSearching, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                 IsIndeterminate="{Binding NuGet.IsSearching}"
+                                                 Visibility="{Binding NuGet.IsSearching, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsRestoring}"
+                                                 Value="True">
+                                        <Setter TargetName="Spinner"
+                                                Property="Foreground"
+                                                Value="Orange" />
+                                        <Setter TargetName="Spinner"
+                                                Property="Visibility"
+                                                Value="Visible" />
+                                        <Setter TargetName="Spinner"
+                                                Property="IsIndeterminate"
+                                                Value="True" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </MenuItem.HeaderTemplate>
                         <ItemsControl.ItemContainerStyle>
@@ -207,32 +232,6 @@
                               ToolTip="Include prerelease packages"
                               Content="Prerelease" />
                 </Decorator>
-                <Menu Background="Transparent">
-                    <MenuItem Header="{Binding NuGet, Mode=OneTime}"
-                              ItemsSource="{Binding RestoreErrors}"
-                              ToolTip="NuGet Restore">
-                        <MenuItem.HeaderTemplate>
-                            <DataTemplate DataType="{x:Type ui:NuGetDocumentViewModel}">
-                                <Grid>
-                                    <Image Name="Icon"
-                                           Source="{StaticResource NuGet}" />
-                                    <ProgressBar VerticalAlignment="Bottom"
-                                                 Height="4"
-                                                 BorderThickness="0"
-                                                 IsIndeterminate="{Binding IsRestoring}"
-                                                 Visibility="{Binding IsRestoring, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                </Grid>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding RestoreFailed}">
-                                        <Setter TargetName="Icon"
-                                                Property="Source"
-                                                Value="{StaticResource WarningMarker}" />
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </MenuItem.HeaderTemplate>
-                    </MenuItem>
-                </Menu>
                 <Separator />
                 <Button Content="{StaticResource FormatDocument}"
                         ToolTip="Format Document (Ctrl+D)"

@@ -1,29 +1,21 @@
+param (
+    [switch] $Avalonia,
+    [switch] $Published
+)
+
+$ErrorActionPreference = 'Stop'
+
 $telemetryKey = ${env:RoslynPadTelemetryKey};
-if ($telemetryKey -eq $null)
-{
+if ($null -eq $telemetryKey) {
     throw "Missing RoslynPadTelemetryKey environment variable"
 }
 
-$binPath = "..\src\RoslynPad\bin\Release\net462"
-$exclude =
-@(
-	"Xceed.Wpf.AvalonDock.Themes.Aero.dll",
-	"Xceed.Wpf.AvalonDock.Themes.Metro.dll",
-	"Xceed.Wpf.AvalonDock.Themes.VS2010.dll",
-	"Xceed.Wpf.DataGrid.dll"
-);
-$files = get-childitem "$location\$binPath\*.dll" | select -ExpandProperty Name | where { $exclude -notcontains $_ }	
-$files +=
-@(
-	"RoslynPad.exe",
-	"RoslynPad.Host32.exe",
-	"RoslynPad.Host64.exe",
-	"RoslynPad.exe.config",
-	"RoslynPad.Host32.exe.config",
-	"RoslynPad.Host64.exe.config"
-)
+$project = if ($Avalonia) { 'RoslynPad.Avalonia' } else { 'RoslynPad' }
+$path = if ($Published) { 'bin\Release\netcoreapp3.1\win-x64\publish' } else { 'bin\Release\netcoreapp3.1' }
+$rootPath = [IO.Path]::GetFullPath("$PSScriptRoot\..\src\$project\$path")
+$exclude = @();
 
-$configFile = "$location\$binPath\RoslynPad.exe.config"
-$config = get-content $configFile
-$config  = $config -replace 'key="InstrumentationKey" value="[^"]*', ('key="InstrumentationKey" value="' + $telemetryKey)
-set-content $configFile $config
+$files = get-childitem "$rootPath\*.*" -file | where { $exclude -notcontains $_.Name } | select -ExpandProperty FullName
+if (Test-Path "$rootPath\runtimes") {
+    $files += get-childitem "$rootPath\runtimes\*.*" -recurse -file | select -ExpandProperty FullName
+}

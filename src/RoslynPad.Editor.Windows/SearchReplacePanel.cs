@@ -23,11 +23,11 @@ namespace RoslynPad.Editor
         private SearchReplaceInputHandler _handler;
         private TextDocument _currentDocument;
         private SearchReplaceResultBackgroundRenderer _renderer;
-        private TextBox _searchTextBox;
+        private TextBox? _searchTextBox;
         private SearchReplacePanelAdorner _adorner;
         private ISearchStrategy _strategy;
 
-        private ToolTip _messageView = new ToolTip { Placement = PlacementMode.Bottom, StaysOpen = true, Focusable = false };
+        private readonly ToolTip _messageView = new ToolTip { Placement = PlacementMode.Bottom, StaysOpen = true, Focusable = false };
 
         #region DependencyProperties
         /// <summary>
@@ -156,15 +156,15 @@ namespace RoslynPad.Editor
             // if results are found by the next run, the message will be hidden inside DoSearch ...
             if (_renderer.CurrentResults.Any())
                 _messageView.IsOpen = false;
-            _strategy = SearchStrategyFactory.Create(SearchPattern ?? "", !MatchCase, WholeWords, UseRegex ? SearchMode.RegEx : SearchMode.Normal);
-            OnSearchOptionsChanged(new SearchOptionsChangedEventArgs(SearchPattern, MatchCase, UseRegex, WholeWords));
+            var searchPattern = SearchPattern ?? "";
+            _strategy = SearchStrategyFactory.Create(searchPattern, !MatchCase, WholeWords, UseRegex ? SearchMode.RegEx : SearchMode.Normal);
+            OnSearchOptionsChanged(new SearchOptionsChangedEventArgs(searchPattern, MatchCase, UseRegex, WholeWords));
             DoSearch(true);
         }
 
-        /// <summary>
-        /// Creates a new SearchReplacePanel.
-        /// </summary>
-        SearchReplacePanel()
+#pragma warning disable CS8618 // Non-nullable field is uninitialized.
+        private SearchReplacePanel()
+#pragma warning restore CS8618 // Non-nullable field is uninitialized.
         {
         }
 
@@ -214,7 +214,7 @@ namespace RoslynPad.Editor
             IsClosed = true;
         }
 
-        void TextArea_DocumentChanged(object sender, EventArgs e)
+        void TextArea_DocumentChanged(object? sender, EventArgs e)
         {
             if (_currentDocument != null)
                 _currentDocument.TextChanged -= TextArea_Document_TextChanged;
@@ -226,7 +226,7 @@ namespace RoslynPad.Editor
             }
         }
 
-        void TextArea_Document_TextChanged(object sender, EventArgs e)
+        void TextArea_Document_TextChanged(object? sender, EventArgs e)
         {
             DoSearch(false);
         }
@@ -489,7 +489,7 @@ namespace RoslynPad.Editor
             FindNext();
         }
 
-        private ISearchResult GetSelectedResult()
+        private ISearchResult? GetSelectedResult()
         {
             if (_textArea.Selection.IsEmpty)
                 return null;
@@ -658,7 +658,7 @@ namespace RoslynPad.Editor
 
     class SearchReplacePanelAdorner : Adorner
     {
-        private SearchReplacePanel _panel;
+        private readonly SearchReplacePanel _panel;
 
         public SearchReplacePanelAdorner(TextArea textArea, SearchReplacePanel panel)
             : base(textArea)

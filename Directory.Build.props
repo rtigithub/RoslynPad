@@ -1,15 +1,24 @@
 <Project>
-    <PropertyGroup>
-        <Features>strict</Features>
-        <Deterministic>True</Deterministic>
-        <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-        <EditorPackageVersion>1.0.7</EditorPackageVersion>
-        <RoslynPackageVersion>2.10.0</RoslynPackageVersion>
-        <RoslynAssemblyVersion>2.10.0.0</RoslynAssemblyVersion>
-        <LangVersion>latest</LangVersion>
-        <Authors>Eli Arbel</Authors>
-        <PackageProjectUrl>https://github.com/aelij/RoslynPad</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/aelij/RoslynPad/blob/master/LICENSE</PackageLicenseUrl>
-        <PackageTags>Roslyn;RoslynPad</PackageTags>
-    </PropertyGroup>
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Features>strict</Features>
+    <Deterministic>True</Deterministic>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <EditorPackageVersion>1.3.0</EditorPackageVersion>
+    <RoslynPackageVersion>3.8.0</RoslynPackageVersion>
+    <RoslynAssemblyVersion>3.8.0.0</RoslynAssemblyVersion>
+    <AvaloniaVersion>0.9.11</AvaloniaVersion>
+    <DotNet5Version>5.0.0</DotNet5Version>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>Enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <Authors>Eli Arbel</Authors>
+    <PackageProjectUrl>https://github.com/aelij/RoslynPad</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageTags>Roslyn;RoslynPad</PackageTags>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+  </PropertyGroup>
 </Project>

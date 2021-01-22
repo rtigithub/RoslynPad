@@ -8,10 +8,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition.Hosting;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using AnalyzerReference = Microsoft.CodeAnalysis.Diagnostics.AnalyzerReference;
+using AnalyzerFileReference = Microsoft.CodeAnalysis.Diagnostics.AnalyzerFileReference;
 
 namespace RoslynPad.Roslyn
 {
@@ -20,27 +21,28 @@ namespace RoslynPad.Roslyn
         #region Fields
 
         internal static readonly ImmutableArray<string> PreprocessorSymbols =
-            ImmutableArray.CreateRange(new[] { "__DEMO__", "__DEMO_EXPERIMENTAL__", "TRACE", "DEBUG" });
+            ImmutableArray.CreateRange(new[] { "TRACE", "DEBUG" });
 
         internal static readonly ImmutableArray<Assembly> DefaultCompositionAssemblies =
             ImmutableArray.Create(
                 // Microsoft.CodeAnalysis.Workspaces
-                typeof(WorkspacesResources).GetTypeInfo().Assembly,
+                typeof(WorkspacesResources).Assembly,
                 // Microsoft.CodeAnalysis.CSharp.Workspaces
-                typeof(CSharpWorkspaceResources).GetTypeInfo().Assembly,
+                typeof(CSharpWorkspaceResources).Assembly,
                 // Microsoft.CodeAnalysis.Features
-                typeof(FeaturesResources).GetTypeInfo().Assembly,
+                typeof(FeaturesResources).Assembly,
                 // Microsoft.CodeAnalysis.CSharp.Features
-                typeof(CSharpFeaturesResources).GetTypeInfo().Assembly,
+                typeof(CSharpFeaturesResources).Assembly,
                 // RoslynPad.Roslyn
-                typeof(RoslynHost).GetTypeInfo().Assembly);
+                typeof(RoslynHost).Assembly);
 
         private readonly ConcurrentDictionary<DocumentId, RoslynWorkspace> _workspaces;
         private readonly ConcurrentDictionary<DocumentId, Action<DiagnosticsUpdatedArgs>> _diagnosticsUpdatedNotifiers;
-        private readonly ParseOptions _parseOptions;
         private readonly IDocumentationProviderService _documentationProviderService;
         private readonly CompositionHost _compositionContext;
         private int _documentNumber;
+
+        public ParseOptions ParseOptions { get; }
 
         public HostServices HostServices { get; }
 
@@ -48,28 +50,15 @@ namespace RoslynPad.Roslyn
 
         public ImmutableArray<string> DefaultImports { get; }
 
+        public ImmutableArray<string> DisabledDiagnostics { get; }
+
         #endregion
 
         #region Constructors
 
-        static RoslynHost()
-        {
-            WorkaroundForDesktopShim(typeof(Compilation));
-            WorkaroundForDesktopShim(typeof(TaggedText));
-        }
-
-        private static void WorkaroundForDesktopShim(Type typeInAssembly)
-        {
-            // DesktopShim doesn't work on Linux, so we hack around it
-
-            typeInAssembly.GetTypeInfo().Assembly
-                .GetType("Roslyn.Utilities.DesktopShim+FileNotFoundException")
-                ?.GetRuntimeFields().FirstOrDefault(f => f.Name == "s_fusionLog")
-                ?.SetValue(null, typeof(Exception).GetRuntimeProperty(nameof(Exception.InnerException)));
-        }
-
-        public RoslynHost(IEnumerable<Assembly> additionalAssemblies = null,
-            RoslynHostReferences references = null)
+        public RoslynHost(IEnumerable<Assembly>? additionalAssemblies = null,
+            RoslynHostReferences? references = null,
+            ImmutableArray<string>? disabledDiagnostics = null)
         {
             if (references == null) references = RoslynHostReferences.Empty;
 
@@ -95,13 +84,14 @@ namespace RoslynPad.Roslyn
             HostServices = MefHostServices.Create(_compositionContext);
 
             // ReSharper disable once VirtualMemberCallInConstructor
-            _parseOptions = CreateDefaultParseOptions();
+            ParseOptions = CreateDefaultParseOptions();
 
             _documentationProviderService = GetService<IDocumentationProviderService>();
 
             DefaultReferences = references.GetReferences(DocumentationProviderFactory);
             DefaultImports = references.Imports;
 
+            DisabledDiagnostics = disabledDiagnostics ?? ImmutableArray<string>.Empty;
             GetService<IDiagnosticService>().DiagnosticsUpdated += OnDiagnosticsUpdated;
         }
 
@@ -115,7 +105,7 @@ namespace RoslynPad.Roslyn
         protected virtual ParseOptions CreateDefaultParseOptions()
         {
             return new CSharpParseOptions(kind: SourceCodeKind.Script,
-                preprocessorSymbols: PreprocessorSymbols, languageVersion: LanguageVersion.Latest);
+                preprocessorSymbols: PreprocessorSymbols, languageVersion: LanguageVersion.Preview);
         }
 
         public MetadataReference CreateMetadataReference(string location)
@@ -126,11 +116,20 @@ namespace RoslynPad.Roslyn
 
         private void OnDiagnosticsUpdated(object sender, DiagnosticsUpdatedArgs diagnosticsUpdatedArgs)
         {
-            var documentId = diagnosticsUpdatedArgs?.DocumentId;
+            var documentId = diagnosticsUpdatedArgs.DocumentId;
             if (documentId == null) return;
 
             if (_diagnosticsUpdatedNotifiers.TryGetValue(documentId, out var notifier))
             {
+                if (diagnosticsUpdatedArgs.Kind == DiagnosticsUpdatedKind.DiagnosticsCreated)
+                {
+                    var remove = diagnosticsUpdatedArgs.Diagnostics.RemoveAll(d => DisabledDiagnostics.Contains(d.Id));
+                    if (remove.Length != diagnosticsUpdatedArgs.Diagnostics.Length)
+                    {
+                        diagnosticsUpdatedArgs = diagnosticsUpdatedArgs.WithDiagnostics(remove);
+                    }
+                }
+
                 notifier(diagnosticsUpdatedArgs);
             }
         }
@@ -158,7 +157,8 @@ namespace RoslynPad.Roslyn
                 return false;
             }
 
-            if (workspace.CurrentSolution.GetDocument(documentId).Project.TryGetCompilation(out var compilation))
+            if (workspace.CurrentSolution.GetDocument(documentId) is Document document &&
+                document.Project.TryGetCompilation(out var compilation))
             {
                 return compilation.ReferencedAssemblyNames.Any(a => a.Name == text);
             }
@@ -194,26 +194,28 @@ namespace RoslynPad.Roslyn
                 workspace.CloseDocument(documentId);
 
                 var document = workspace.CurrentSolution.GetDocument(documentId);
-                Debug.Assert(document != null, "document != null");
 
-                var solution = document.Project.RemoveDocument(documentId).Solution;
-
-                if (!solution.Projects.SelectMany(d => d.DocumentIds).Any())
+                if (document != null)
                 {
-                    _workspaces.TryRemove(documentId, out workspace);
+                    var solution = document.Project.RemoveDocument(documentId).Solution;
 
-                    using (workspace) { }
-                }
-                else
-                {
-                    workspace.SetCurrentSolution(solution);
+                    if (!solution.Projects.SelectMany(d => d.DocumentIds).Any())
+                    {
+                        _workspaces.TryRemove(documentId, out workspace);
+
+                        using (workspace) { }
+                    }
+                    else
+                    {
+                        workspace.SetCurrentSolution(solution);
+                    }
                 }
             }
 
             _diagnosticsUpdatedNotifiers.TryRemove(documentId, out _);
         }
 
-        public Document GetDocument(DocumentId documentId)
+        public Document? GetDocument(DocumentId documentId)
         {
             if (documentId == null) throw new ArgumentNullException(nameof(documentId));
 
@@ -247,9 +249,10 @@ namespace RoslynPad.Roslyn
             return documentId;
         }
 
-        private DocumentId AddDocument(RoslynWorkspace workspace, DocumentCreationArgs args, Document previousDocument = null)
+        private DocumentId AddDocument(RoslynWorkspace workspace, DocumentCreationArgs args, Document? previousDocument = null)
         {
-            var project = CreateProject(workspace.CurrentSolution, args,
+            var solution = workspace.CurrentSolution.AddAnalyzerReferences(GetSolutionAnalyzerReferences());
+            var project = CreateProject(solution, args,
                 CreateCompilationOptions(args, previousDocument == null), previousDocument?.Project);
             var document = CreateDocument(project, args);
             var documentId = document.Id;
@@ -264,15 +267,25 @@ namespace RoslynPad.Roslyn
                 _diagnosticsUpdatedNotifiers.TryAdd(documentId, args.OnDiagnosticsUpdated);
             }
 
-            if (args.OnTextUpdated != null)
+            var onTextUpdated = args.OnTextUpdated;
+            if (onTextUpdated != null)
             {
                 workspace.ApplyingTextChange += (d, s) =>
                 {
-                    if (documentId == d) args.OnTextUpdated(s);
+                    if (documentId == d) onTextUpdated(s);
                 };
             }
 
             return documentId;
+        }
+
+        protected virtual IEnumerable<AnalyzerReference> GetSolutionAnalyzerReferences()
+        {
+            var loader = GetService<IAnalyzerAssemblyLoader>();
+            yield return new AnalyzerFileReference(typeof(Compilation).Assembly.Location, loader);
+            yield return new AnalyzerFileReference(typeof(CSharpResources).Assembly.Location, loader);
+            yield return new AnalyzerFileReference(typeof(FeaturesResources).Assembly.Location, loader);
+            yield return new AnalyzerFileReference(typeof(CSharpFeaturesResources).Assembly.Location, loader);
         }
 
         public void UpdateDocument(Document document)
@@ -293,7 +306,8 @@ namespace RoslynPad.Roslyn
                 usings: addDefaultImports ? DefaultImports : ImmutableArray<string>.Empty,
                 allowUnsafe: true,
                 sourceReferenceResolver: new SourceFileResolver(ImmutableArray<string>.Empty, args.WorkingDirectory),
-                metadataReferenceResolver: new CachedScriptMetadataResolver(args.WorkingDirectory, useCache: true));
+                metadataReferenceResolver: new CachedScriptMetadataResolver(args.WorkingDirectory, useCache: true),
+                nullableContextOptions: NullableContextOptions.Enable);
             return compilationOptions;
         }
 
@@ -301,15 +315,15 @@ namespace RoslynPad.Roslyn
         {
             var id = DocumentId.CreateNewId(project.Id);
             var solution = project.Solution.AddDocument(id, args.Name ?? project.Name, args.SourceTextContainer.CurrentText);
-            return solution.GetDocument(id);
+            return solution.GetDocument(id)!;
         }
 
-        protected virtual Project CreateProject(Solution solution, DocumentCreationArgs args, CompilationOptions compilationOptions, Project previousProject = null)
+        protected virtual Project CreateProject(Solution solution, DocumentCreationArgs args, CompilationOptions compilationOptions, Project? previousProject = null)
         {
             var name = args.Name ?? "Program" + Interlocked.Increment(ref _documentNumber);
             var id = ProjectId.CreateNewId(name);
 
-            var isScript = _parseOptions.Kind == SourceCodeKind.Script;
+            var isScript = ParseOptions.Kind == SourceCodeKind.Script;
 
             if (isScript)
             {
@@ -323,14 +337,14 @@ namespace RoslynPad.Roslyn
                 name,
                 LanguageNames.CSharp,
                 isSubmission: isScript,
-                parseOptions: _parseOptions,
+                parseOptions: ParseOptions,
                 compilationOptions: compilationOptions,
                 metadataReferences: previousProject != null ? ImmutableArray<MetadataReference>.Empty : DefaultReferences,
                 projectReferences: previousProject != null ? new[] { new ProjectReference(previousProject.Id) } : null));
 
             var project = solution.GetProject(id);
 
-            return project;
+            return project!;
         }
 
         #endregion

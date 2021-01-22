@@ -32,8 +32,9 @@ namespace RoslynPad.Roslyn.Completion.Providers
 
         private CompletionItem CreateNuGetRoot()
             => CommonCompletionItem.Create(
-                NuGetPrefix,
-                s_rules,
+                displayText: NuGetPrefix,
+                displayTextSuffix: "",
+                rules: s_rules,
                 glyph: Microsoft.CodeAnalysis.Glyph.NuGet,
                 sortText: "");
 
@@ -72,6 +73,7 @@ namespace RoslynPad.Roslyn.Completion.Providers
                     context.AddItems(versions.Select((v, i) =>
                         CommonCompletionItem.Create(
                             v,
+                            "",
                             s_rules,
                             Microsoft.CodeAnalysis.Glyph.NuGet,
                             sortText: i.ToString("0000"))));
@@ -82,15 +84,17 @@ namespace RoslynPad.Roslyn.Completion.Providers
                 context.AddItems(packages.Select((p, i) =>
                     CommonCompletionItem.Create(
                         NuGetPrefix + p.Id + "/",
+                         "",
                         s_rules,
                         Microsoft.CodeAnalysis.Glyph.NuGet,
                         sortText: i.ToString("0000"))));
             }
         }
 
-        private static (string id, string version) ParseNuGetReference(string value)
+        private static (string id, string? version) ParseNuGetReference(string value)
         {
-            string id, version;
+            string id;
+            string? version;
 
             var indexOfSlash = value.IndexOf('/');
             if (indexOfSlash >= 0)
